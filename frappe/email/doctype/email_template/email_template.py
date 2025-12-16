@@ -17,8 +17,10 @@ class EmailTemplate(Document):
 	if TYPE_CHECKING:
 		from frappe.types import DF
 
+		email_template_category: DF.Link | None
 		response: DF.TextEditor | None
 		response_html: DF.Code | None
+		restrict_to_doctype: DF.Link | None
 		subject: DF.Data
 		use_html: DF.Check
 	# end: auto-generated types

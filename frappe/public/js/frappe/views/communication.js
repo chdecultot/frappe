@@ -119,6 +119,8 @@ frappe.views.CommunicationComposer = class {
 				fieldname: "content",
 				onchange: frappe.utils.debounce(this.save_as_draft.bind(this), 300),
 			},
+			{ fieldtype: "Section Break" },
+			{ fieldtype: "Column Break" },
 			{
 				fieldtype: "Button",
 				label: __("Add Signature"),
@@ -128,6 +130,15 @@ frappe.views.CommunicationComposer = class {
 					let sender_email = this.dialog.get_value("sender") || "";
 					this.content_set = false;
 					await this.set_content(sender_email);
+				},
+			},
+			{ fieldtype: "Column Break" },
+			{
+				fieldtype: "Button",
+				label: __("Email Templates"), // Bouton pour ouvrir le gestionnaire
+				fieldname: "btn_manage_templates",
+				click: () => {
+					this.open_template_manager();
 				},
 			},
 			{ fieldtype: "Section Break" },
@@ -976,5 +987,37 @@ frappe.views.CommunicationComposer = class {
 
 		const text = frappe.utils.html2text(html);
 		return text.replace(/\n{3,}/g, "\n\n");
+	}
+
+	open_template_manager() {
+		new frappe.views.EmailTemplateSelector((selected_template) => {
+			this.apply_template(selected_template);
+		}, this.frm.doctype);
+	}
+
+	apply_template(selected_template) {
+		if (!selected_template) return;
+		const me = this;
+
+		function prepend_reply(reply) {
+			const content_field = me.dialog.fields_dict.content;
+			const subject_field = me.dialog.fields_dict.subject;
+
+			let content = content_field.get_value() || "";
+
+			content_field.set_value(`${reply.message}<br>${content}`);
+			subject_field.set_value(reply.subject);
+		}
+
+		frappe.call({
+			method: "frappe.email.doctype.email_template.email_template.get_email_template",
+			args: {
+				template_name: selected_template.name,
+				doc: me.doc,
+			},
+			callback(r) {
+				prepend_reply(r.message);
+			},
+		});
 	}
 };

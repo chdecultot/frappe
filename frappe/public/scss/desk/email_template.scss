@@ -1,0 +1,390 @@
+/* * Style Espresso / Frappe Framework
+ * Utilisation des variables CSS natives pour le support Dark Mode et Thèmes
+ */
+
+// Variables locales mappées sur les variables Frappe
+$tm-bg-color: var(--bg-color);
+$tm-bg-gray: var(--gray-50); // Fond gris subtil de Frappe
+$tm-border-color: var(--border-color);
+$tm-primary-color: var(--primary);
+$tm-text-color: var(--text-color);
+$tm-text-muted: var(--text-muted);
+$tm-border-radius: var(--border-radius-md); // Standard Frappe (généralement 8px)
+$tm-card-shadow: var(--shadow-base);
+
+// Ajustement de la modale pour le style "Dashboard"
+.email-template-modal {
+	max-width: 1280px !important;
+	width: 95%;
+
+	.modal-content {
+		box-shadow: var(--shadow-xl);
+		border: 1px solid var(--border-color);
+	}
+}
+
+.template-manager-body {
+	display: flex;
+	height: 70vh; // Hauteur relative au viewport
+	min-height: 600px;
+	background-color: $tm-bg-color;
+	font-family: var(--font-stack); // Police native (Inter)
+	overflow: hidden;
+	color: $tm-text-color;
+
+	// --- 1. Sidebar (Catégories) ---
+	.tm-sidebar {
+		width: 240px;
+		background-color: var(--card-bg); // S'adapte au mode sombre
+		border-right: 1px solid $tm-border-color;
+		padding: var(--padding-md);
+		display: flex;
+		flex-direction: column;
+		flex-shrink: 0;
+		gap: 4px;
+
+		.tm-category-item {
+			padding: 8px 12px;
+			border-radius: $tm-border-radius;
+			cursor: pointer;
+			color: $tm-text-color;
+			font-size: var(--text-base);
+			font-weight: normal;
+			display: flex;
+			align-items: center;
+			transition: background-color 0.2s ease, color 0.2s ease;
+			user-select: none;
+
+			.category-icon {
+				margin-right: 10px;
+				width: 16px;
+				text-align: center;
+				color: $tm-text-muted;
+				font-size: 14px;
+			}
+
+			&:hover {
+				background-color: var(--fg-hover-color); // Gris survol standard
+				text-decoration: none;
+			}
+
+			&.active {
+				background-color: var(--primary-accent); // Couleur primaire légère
+				color: var(--primary);
+				font-weight: 600;
+
+				.category-icon {
+					color: var(--primary);
+				}
+			}
+		}
+	}
+
+	// --- 2. Zone Principale (Grille) ---
+	.tm-main {
+		flex: 1;
+		padding: var(--padding-lg);
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		background-color: $tm-bg-gray; // Fond gris clair typique du Desk
+
+		.tm-toolbar {
+			margin-bottom: var(--padding-md);
+
+			.tm-search-wrapper {
+				position: relative;
+				max-width: 100%;
+
+				.search-icon {
+					position: absolute;
+					left: 10px;
+					top: 50%;
+					transform: translateY(-50%);
+					color: $tm-text-muted;
+					pointer-events: none;
+				}
+
+				.tm-search-bar {
+					width: 100%;
+					height: 36px; // Hauteur standard des inputs Frappe
+					padding: 0 12px 0 34px;
+					border: 1px solid $tm-border-color;
+					border-radius: $tm-border-radius;
+					outline: none;
+					background-color: var(--control-bg); // Fond d'input blanc ou gris foncé
+					color: $tm-text-color;
+					font-size: var(--text-base);
+					transition: border-color 0.2s, box-shadow 0.2s;
+
+					&::placeholder {
+						color: $tm-text-muted;
+					}
+
+					&:focus {
+						border-color: $tm-primary-color;
+						box-shadow: 0 0 0 3px var(--primary-accent); // Focus ring style Frappe
+					}
+				}
+			}
+		}
+
+		.tm-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+			gap: var(--padding-md);
+			overflow-y: auto;
+			padding: 4px; // Petit padding pour éviter de couper l'ombre du focus
+			padding-bottom: var(--padding-lg);
+
+			// Scrollbar native fine
+			&::-webkit-scrollbar {
+				width: 6px;
+			}
+			&::-webkit-scrollbar-track {
+				background: transparent;
+			}
+			&::-webkit-scrollbar-thumb {
+				background-color: var(--gray-300);
+				border-radius: 3px;
+			}
+
+			.tm-no-results {
+				grid-column: 1 / -1;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				margin-top: 60px;
+				color: $tm-text-muted;
+
+				svg {
+					width: 48px;
+					height: 48px;
+					margin-bottom: var(--padding-sm);
+					stroke: var(--gray-300);
+				}
+			}
+		}
+
+		.tm-card {
+			background: var(--card-bg);
+			border: 1px solid $tm-border-color;
+			border-radius: var(--border-radius-lg); // Cartes un peu plus arrondies
+			cursor: pointer;
+			transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+			display: flex;
+			flex-direction: column;
+			height: 220px;
+			position: relative;
+			overflow: hidden;
+
+			&:hover {
+				transform: translateY(-2px);
+				box-shadow: var(--shadow-md);
+				border-color: var(--gray-400);
+
+				.tm-card-title {
+					color: var(--primary);
+				}
+			}
+
+			&.selected {
+				border: 1.5px solid var(--primary);
+				box-shadow: 0 0 0 3px var(--primary-accent);
+			}
+
+			.tm-card-body {
+				flex: 1;
+				background: var(--bg-color); // Fond blanc dans la carte
+				overflow: hidden;
+				padding: var(--padding-md);
+				position: relative;
+
+				.tm-heart-icon {
+					position: absolute;
+					top: 8px;
+					right: 8px;
+					z-index: 5;
+					cursor: pointer;
+
+					// Style du "Bouton" rond
+					width: 28px;
+					height: 28px;
+					border-radius: 50%;
+					background-color: var(--card-bg); // S'adapte au dark mode
+					box-shadow: var(--shadow-sm); // Ombre subtile native
+					border: 1px solid var(--border-color);
+
+					display: flex;
+					align-items: center;
+					justify-content: center;
+					transition: all 0.2s ease;
+					opacity: 0; // Caché par défaut pour un look épuré...
+					transform: translateY(-5px);
+
+					svg {
+						width: 14px;
+						height: 14px;
+						stroke: var(--text-muted);
+						fill: none;
+						stroke-width: 2;
+						transition: all 0.2s ease;
+					}
+
+					&:hover {
+						transform: scale(1.1);
+						box-shadow: var(--shadow-md);
+						background-color: var(--control-bg);
+					}
+
+					// État "Liké" (Rouge)
+					&.liked {
+						opacity: 1; // Toujours visible si liké
+						transform: translateY(0);
+						border-color: var(--red-100);
+						background-color: var(--red-50); // Fond rouge très pâle
+
+						svg {
+							stroke: var(--red-500);
+							fill: var(--red-500);
+						}
+					}
+				}
+
+				// Afficher le bouton au survol de la carte
+				&:hover .tm-heart-icon {
+					opacity: 1;
+					transform: translateY(0);
+				}
+
+				// Style pour le "mini-code" visuel
+				.tm-card-mini-preview {
+					font-family: var(--font-stack);
+					font-size: 8px; // Très petit pour l'effet "aperçu"
+					color: var(--gray-500);
+					line-height: 1.5;
+					user-select: none;
+					opacity: 0.8;
+				}
+
+				// Dégradé en bas de la carte pour effet "coupé"
+				.tm-card-overlay {
+					position: absolute;
+					bottom: 0;
+					left: 0;
+					right: 0;
+					height: 60px;
+					// Dégradé transparent vers la couleur de fond de la carte
+					background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--card-bg));
+				}
+			}
+
+			.tm-card-footer {
+				height: 44px;
+				border-top: 1px solid $tm-border-color;
+				display: flex;
+				align-items: center;
+				padding: 0 var(--padding-md);
+				background-color: var(--control-bg); // Légère différence de ton
+
+				.tm-card-title {
+					font-size: var(--text-md);
+					font-weight: 600;
+					white-space: nowrap;
+					overflow: hidden;
+					text-overflow: ellipsis;
+					color: $tm-text-color;
+					width: 100%;
+				}
+			}
+		}
+	}
+
+	// --- 3. Volet Aperçu ---
+	.tm-preview-pane {
+		width: 400px;
+		background: var(--card-bg);
+		border-left: 1px solid $tm-border-color;
+		padding: var(--padding-lg);
+		display: flex;
+		flex-direction: column;
+		flex-shrink: 0;
+		z-index: 10;
+
+		.tm-preview-header {
+			font-size: var(--text-lg);
+			font-weight: 700;
+			margin-bottom: var(--padding-md);
+			color: $tm-text-color;
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			height: 30px;
+		}
+
+		.tm-preview-frame {
+			flex: 1;
+			border: 1px solid $tm-border-color;
+			border-radius: var(--border-radius-md);
+			padding: 20px;
+			overflow-y: auto;
+			background: #ffffff; // Le contenu d'un email est souvent sur fond blanc, même en dark mode
+			color: #000000; // Idem pour le texte
+			font-size: 14px;
+			line-height: 1.6;
+			box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
+
+			// Empty state
+			.tm-empty-state {
+				height: 100%;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				color: var(--gray-400);
+
+				svg {
+					margin-bottom: var(--padding-sm);
+					stroke: var(--gray-300);
+				}
+
+				p {
+					font-size: var(--text-muted);
+				}
+			}
+		}
+	}
+}
+
+// --- Responsive Mobile ---
+@media (max-width: 991px) {
+	.template-manager-body {
+		flex-direction: column;
+		height: auto;
+		max-height: 80vh;
+
+		.tm-sidebar {
+			width: 100%;
+			flex-direction: row;
+			overflow-x: auto;
+			border-right: none;
+			border-bottom: 1px solid $tm-border-color;
+			padding: var(--padding-sm);
+			gap: var(--padding-sm);
+
+			.tm-category-item {
+				white-space: nowrap;
+				background-color: var(--control-bg); // Boutons style "pills" en mobile
+			}
+		}
+
+		.tm-main {
+			padding: var(--padding-md);
+		}
+
+		.tm-preview-pane {
+			display: none; // Masquer l'aperçu sur mobile pour simplifier
+		}
+	}
+}
