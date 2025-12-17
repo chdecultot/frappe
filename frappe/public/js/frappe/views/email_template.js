@@ -2,9 +2,9 @@ frappe.provide("frappe.ui");
 frappe.provide("frappe.views");
 
 frappe.views.EmailTemplateSelector = class EmailTemplateSelector {
-	constructor(callback, doctype) {
+	constructor(callback, frm) {
 		this.callback = callback;
-		this.doctype = doctype;
+		this.frm = frm;
 		this.templates = [];
 		this.categories_data = [];
 		this.selected_template = null;
@@ -54,7 +54,6 @@ frappe.views.EmailTemplateSelector = class EmailTemplateSelector {
 	}
 
 	render_dialog_body() {
-		// Le CSS est maintenant géré dans le fichier SCSS via la classe .tm-heart-icon
 		const body_html = `
 			<div class="template-manager-body">
 				<div class="tm-sidebar" id="tm-sidebar"></div>
@@ -96,9 +95,17 @@ frappe.views.EmailTemplateSelector = class EmailTemplateSelector {
 			args: {
 				doctype: "Email Template",
 				filters: {
-					restrict_to_doctype: ["in", ["", this.doctype]],
+					restrict_to_doctype: ["in", ["", this.frm ? this.frm.doctype : ""]],
 				},
-				fields: ["name", "subject", "response", "_liked_by", "email_template_category"],
+				fields: [
+					"name",
+					"subject",
+					"response",
+					"response_html",
+					"use_html",
+					"_liked_by",
+					"email_template_category",
+				],
 				limit_page_length: 100,
 			},
 		});
@@ -228,7 +235,9 @@ frappe.views.EmailTemplateSelector = class EmailTemplateSelector {
 		}
 
 		templates.forEach((tpl) => {
-			const plainText = $(tpl.response).text().substring(0, 150);
+			const plainText = tpl.use_html
+				? tpl.response_html.substring(0, 150)
+				: $(tpl.response).text().substring(0, 150);
 			const isLiked = this.is_liked_by_user(tpl);
 
 			const $card = $(`
@@ -269,7 +278,38 @@ frappe.views.EmailTemplateSelector = class EmailTemplateSelector {
 	update_preview(tpl) {
 		this.dialog.$wrapper.find("#tm-preview-title").text(tpl.name);
 		const $content = this.dialog.$wrapper.find("#tm-preview-content");
-		$content.html(tpl.response);
+
+		// État de chargement
+		$content.html(`
+			<div class="flex flex-column align-center justify-center h-100 text-muted">
+				<span class="mb-2">${frappe.utils.icon("refresh", "animate-spin")}</span>
+				<span>${__("Rendering preview...")}</span>
+			</div>
+		`);
+
+		// Appel API pour obtenir le rendu Jinja contextuel
+		frappe.call({
+			method: "frappe.email.doctype.email_template.email_template.get_email_template",
+			args: {
+				template_name: tpl.name,
+				doc: this.frm ? this.frm.doc : {}, // On passe le document actuel pour le contexte
+				_lang: this.frm ? this.frm.doc.language : frappe.boot.lang,
+			},
+			callback: (r) => {
+				if (r.message) {
+					// r.message contient { subject: "...", message: "..." }
+					// On met à jour l'objet template sélectionné avec le contenu rendu
+					// pour qu'au moment de l'insertion ("Insert"), le texte soit déjà traité
+					this.selected_template.subject = r.message.subject;
+					this.selected_template.response = r.message.message;
+
+					$content.html(r.message.message);
+				}
+			},
+			error: (e) => {
+				$content.html(`<div class="text-danger">${__("Error rendering template")}</div>`);
+			},
+		});
 	}
 
 	bind_events() {

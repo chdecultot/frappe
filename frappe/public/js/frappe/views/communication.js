@@ -119,27 +119,10 @@ frappe.views.CommunicationComposer = class {
 				fieldname: "content",
 				onchange: frappe.utils.debounce(this.save_as_draft.bind(this), 300),
 			},
-			{ fieldtype: "Section Break" },
-			{ fieldtype: "Column Break" },
+			{ fieldtype: "Section Break", hide_border: true },
 			{
-				fieldtype: "Button",
-				label: __("Add Signature"),
-				fieldname: "add_signature",
-				hidden: 1,
-				click: async () => {
-					let sender_email = this.dialog.get_value("sender") || "";
-					this.content_set = false;
-					await this.set_content(sender_email);
-				},
-			},
-			{ fieldtype: "Column Break" },
-			{
-				fieldtype: "Button",
-				label: __("Email Templates"), // Bouton pour ouvrir le gestionnaire
-				fieldname: "btn_manage_templates",
-				click: () => {
-					this.open_template_manager();
-				},
+				fieldtype: "HTML",
+				fieldname: "actions_toolbar",
 			},
 			{ fieldtype: "Section Break" },
 			{
@@ -225,15 +208,6 @@ frappe.views.CommunicationComposer = class {
 	}
 
 	guess_language() {
-		// when attach print for print format changes try to guess language
-		// if print format has language then set that else boot lang.
-
-		// Print language resolution:
-		// 1. Document's print_language field
-		// 2. print format's default field
-		// 3. user lang
-		// 4. system lang
-		// 3 and 4 are resolved already in boot
 		let document_lang = this.frm?.doc?.language;
 		let print_format = this.dialog.get_value("select_print_format");
 
@@ -266,13 +240,44 @@ frappe.views.CommunicationComposer = class {
 		this.setup_email();
 		this.setup_email_template();
 		this.setup_last_edited_communication();
-		this.setup_add_signature_button();
+		this.render_toolbar();
 		this.set_values();
 	}
 
-	setup_add_signature_button() {
-		let has_sender = this.dialog.has_field("sender");
-		this.dialog.set_df_property("add_signature", "hidden", !has_sender);
+	render_toolbar() {
+		const toolbar_field = this.dialog.get_field("actions_toolbar");
+		if (!toolbar_field) return;
+
+		const $wrapper = toolbar_field.$wrapper;
+
+		// Simple flex styling for the toolbar
+		$wrapper.html(`
+			<div class="flex" style="gap: 8px; margin-bottom: 10px;">
+				<button class="btn btn-default btn-sm action-btn-template" title="${__("Email Templates")}">
+					${frappe.utils.icon("pen", "sm")}
+				</button>
+				<button class="btn btn-default btn-sm action-btn-signature" title="${__("Add Signature")}">
+					${frappe.utils.icon("edit", "sm")}
+				</button>
+			</div>
+		`);
+
+		// Bind Template Manager
+		$wrapper.find(".action-btn-template").on("click", () => {
+			this.open_template_manager();
+		});
+
+		// Bind Add Signature
+		$wrapper.find(".action-btn-signature").on("click", async () => {
+			let sender_email = this.dialog.get_value("sender") || "";
+			this.content_set = false;
+			await this.set_content(sender_email);
+		});
+
+		// Hide signature button if no sender (mimicking original logic)
+		if (!this.dialog.has_field("sender")) {
+			$wrapper.find(".action-btn-signature").hide();
+		}
 	}
 
 	setup_multiselect_queries() {
@@ -992,32 +997,25 @@ frappe.views.CommunicationComposer = class {
 	open_template_manager() {
 		new frappe.views.EmailTemplateSelector((selected_template) => {
 			this.apply_template(selected_template);
-		}, this.frm.doctype);
+		});
 	}
 
-	apply_template(selected_template) {
-		if (!selected_template) return;
-		const me = this;
+	apply_template(template) {
+		if (!template) return;
 
-		function prepend_reply(reply) {
-			const content_field = me.dialog.fields_dict.content;
-			const subject_field = me.dialog.fields_dict.subject;
+		const set_values = () => {
+			if (template.subject) {
+				this.dialog.set_value("subject", template.subject);
+			}
+			this.dialog.set_value("content", template.response);
+		};
 
-			let content = content_field.get_value() || "";
-
-			content_field.set_value(`${reply.message}<br>${content}`);
-			subject_field.set_value(reply.subject);
+		if (this.dialog.get_value("content")) {
+			frappe.confirm(__("Cela remplacera le contenu actuel du message. Continuer ?"), () => {
+				set_values();
+			});
+		} else {
+			set_values();
 		}
-
-		frappe.call({
-			method: "frappe.email.doctype.email_template.email_template.get_email_template",
-			args: {
-				template_name: selected_template.name,
-				doc: me.doc,
-			},
-			callback(r) {
-				prepend_reply(r.message);
-			},
-		});
 	}
 };
