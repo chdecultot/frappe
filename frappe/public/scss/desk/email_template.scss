@@ -1,18 +1,12 @@
-/* * Style Espresso / Frappe Framework
- * Utilisation des variables CSS natives pour le support Dark Mode et Thèmes
- */
-
-// Variables locales mappées sur les variables Frappe
 $tm-bg-color: var(--bg-color);
-$tm-bg-gray: var(--gray-50); // Fond gris subtil de Frappe
+$tm-bg-gray: var(--gray-50);
 $tm-border-color: var(--border-color);
 $tm-primary-color: var(--primary);
 $tm-text-color: var(--text-color);
 $tm-text-muted: var(--text-muted);
-$tm-border-radius: var(--border-radius-md); // Standard Frappe (généralement 8px)
+$tm-border-radius: var(--border-radius-md);
 $tm-card-shadow: var(--shadow-base);
 
-// Ajustement de la modale pour le style "Dashboard"
 .email-template-modal {
 	max-width: 1280px !important;
 	width: 95%;
@@ -25,17 +19,16 @@ $tm-card-shadow: var(--shadow-base);
 
 .template-manager-body {
 	display: flex;
-	height: 70vh; // Hauteur relative au viewport
+	height: 70vh;
 	min-height: 600px;
 	background-color: $tm-bg-color;
-	font-family: var(--font-stack); // Police native (Inter)
+	font-family: var(--font-stack);
 	overflow: hidden;
 	color: $tm-text-color;
 
-	// --- 1. Sidebar (Catégories) ---
 	.tm-sidebar {
 		width: 240px;
-		background-color: var(--card-bg); // S'adapte au mode sombre
+		background-color: var(--card-bg);
 		border-right: 1px solid $tm-border-color;
 		padding: var(--padding-md);
 		display: flex;
@@ -64,12 +57,12 @@ $tm-card-shadow: var(--shadow-base);
 			}
 
 			&:hover {
-				background-color: var(--fg-hover-color); // Gris survol standard
+				background-color: var(--fg-hover-color);
 				text-decoration: none;
 			}
 
 			&.active {
-				background-color: var(--primary-accent); // Couleur primaire légère
+				background-color: var(--primary-accent);
 				color: var(--primary);
 				font-weight: 600;
 
@@ -80,17 +73,23 @@ $tm-card-shadow: var(--shadow-base);
 		}
 	}
 
-	// --- 2. Zone Principale (Grille) ---
 	.tm-main {
 		flex: 1;
-		padding: var(--padding-lg);
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		background-color: $tm-bg-gray; // Fond gris clair typique du Desk
+		background-color: var(--bg-color);
+		position: relative;
 
 		.tm-toolbar {
-			margin-bottom: var(--padding-md);
+			height: 60px;
+			padding: 0 20px;
+			border-bottom: 1px solid var(--border-color);
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			background: var(--card-bg);
+			flex-shrink: 0;
 
 			.tm-search-wrapper {
 				position: relative;
@@ -107,12 +106,12 @@ $tm-card-shadow: var(--shadow-base);
 
 				.tm-search-bar {
 					width: 100%;
-					height: 36px; // Hauteur standard des inputs Frappe
+					height: 36px;
 					padding: 0 12px 0 34px;
 					border: 1px solid $tm-border-color;
 					border-radius: $tm-border-radius;
 					outline: none;
-					background-color: var(--control-bg); // Fond d'input blanc ou gris foncé
+					background-color: var(--control-bg);
 					color: $tm-text-color;
 					font-size: var(--text-base);
 					transition: border-color 0.2s, box-shadow 0.2s;
@@ -123,185 +122,61 @@ $tm-card-shadow: var(--shadow-base);
 
 					&:focus {
 						border-color: $tm-primary-color;
-						box-shadow: 0 0 0 3px var(--primary-accent); // Focus ring style Frappe
+						box-shadow: 0 0 0 3px var(--primary-accent);
 					}
 				}
 			}
 		}
 
-		.tm-grid {
-			display: grid;
-			grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-			gap: var(--padding-md);
+		.tm-content-wrapper {
+			flex: 1;
 			overflow-y: auto;
-			padding: 4px; // Petit padding pour éviter de couper l'ombre du focus
-			padding-bottom: var(--padding-lg);
-
-			// Scrollbar native fine
-			&::-webkit-scrollbar {
-				width: 6px;
-			}
-			&::-webkit-scrollbar-track {
-				background: transparent;
-			}
-			&::-webkit-scrollbar-thumb {
-				background-color: var(--gray-300);
-				border-radius: 3px;
-			}
-
-			.tm-no-results {
-				grid-column: 1 / -1;
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				justify-content: center;
-				margin-top: 60px;
-				color: $tm-text-muted;
-
-				svg {
-					width: 48px;
-					height: 48px;
-					margin-bottom: var(--padding-sm);
-					stroke: var(--gray-300);
-				}
-			}
-		}
-
-		.tm-card {
-			background: var(--card-bg);
-			border: 1px solid $tm-border-color;
-			border-radius: var(--border-radius-lg); // Cartes un peu plus arrondies
-			cursor: pointer;
-			transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
-			display: flex;
-			flex-direction: column;
-			height: 220px;
+			padding: 20px;
 			position: relative;
-			overflow: hidden;
 
-			&:hover {
-				transform: translateY(-2px);
-				box-shadow: var(--shadow-md);
-				border-color: var(--gray-400);
+			#tm-grid-view {
+				.tm-grid {
+					display: grid;
+					grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+					gap: 15px;
 
-				.tm-card-title {
-					color: var(--primary);
-				}
-			}
-
-			&.selected {
-				border: 1.5px solid var(--primary);
-				box-shadow: 0 0 0 3px var(--primary-accent);
-			}
-
-			.tm-card-body {
-				flex: 1;
-				background: var(--bg-color); // Fond blanc dans la carte
-				overflow: hidden;
-				padding: var(--padding-md);
-				position: relative;
-
-				.tm-heart-icon {
-					position: absolute;
-					top: 8px;
-					right: 8px;
-					z-index: 5;
-					cursor: pointer;
-
-					// Style du "Bouton" rond
-					width: 28px;
-					height: 28px;
-					border-radius: 50%;
-					background-color: var(--card-bg); // S'adapte au dark mode
-					box-shadow: var(--shadow-sm); // Ombre subtile native
-					border: 1px solid var(--border-color);
-
-					display: flex;
-					align-items: center;
-					justify-content: center;
-					transition: all 0.2s ease;
-					opacity: 0; // Caché par défaut pour un look épuré...
-					transform: translateY(-5px);
-
-					svg {
-						width: 14px;
-						height: 14px;
-						stroke: var(--text-muted);
-						fill: none;
-						stroke-width: 2;
-						transition: all 0.2s ease;
-					}
-
-					&:hover {
-						transform: scale(1.1);
-						box-shadow: var(--shadow-md);
-						background-color: var(--control-bg);
-					}
-
-					// État "Liké" (Rouge)
-					&.liked {
-						opacity: 1; // Toujours visible si liké
-						transform: translateY(0);
-						border-color: var(--red-100);
-						background-color: var(--red-50); // Fond rouge très pâle
+					.tm-no-results {
+						grid-column: 1 / -1;
+						display: flex;
+						flex-direction: column;
+						align-items: center;
+						justify-content: center;
+						padding-top: 60px;
+						color: $tm-text-muted;
+						text-align: center;
 
 						svg {
-							stroke: var(--red-500);
-							fill: var(--red-500);
+							margin-bottom: 15px;
+							width: 36px;
+							height: 36px;
+							color: var(--gray-300);
 						}
 					}
 				}
-
-				// Afficher le bouton au survol de la carte
-				&:hover .tm-heart-icon {
-					opacity: 1;
-					transform: translateY(0);
-				}
-
-				// Style pour le "mini-code" visuel
-				.tm-card-mini-preview {
-					font-family: var(--font-stack);
-					font-size: 8px; // Très petit pour l'effet "aperçu"
-					color: var(--gray-500);
-					line-height: 1.5;
-					user-select: none;
-					opacity: 0.8;
-				}
-
-				// Dégradé en bas de la carte pour effet "coupé"
-				.tm-card-overlay {
-					position: absolute;
-					bottom: 0;
-					left: 0;
-					right: 0;
-					height: 60px;
-					// Dégradé transparent vers la couleur de fond de la carte
-					background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--card-bg));
-				}
 			}
 
-			.tm-card-footer {
-				height: 44px;
-				border-top: 1px solid $tm-border-color;
-				display: flex;
-				align-items: center;
-				padding: 0 var(--padding-md);
-				background-color: var(--control-bg); // Légère différence de ton
+			#tm-editor-view {
+				display: none;
+				max-width: 800px;
+				margin: 0 auto;
 
-				.tm-card-title {
-					font-size: var(--text-md);
-					font-weight: 600;
-					white-space: nowrap;
-					overflow: hidden;
-					text-overflow: ellipsis;
-					color: $tm-text-color;
-					width: 100%;
+				.form-section {
+					padding: 0;
+					background: transparent;
+				}
+
+				.frappe-control {
+					margin-bottom: 15px;
 				}
 			}
 		}
 	}
 
-	// --- 3. Volet Aperçu ---
 	.tm-preview-pane {
 		width: 400px;
 		background: var(--card-bg);
@@ -329,13 +204,12 @@ $tm-card-shadow: var(--shadow-base);
 			border-radius: var(--border-radius-md);
 			padding: 20px;
 			overflow-y: auto;
-			background: #ffffff; // Le contenu d'un email est souvent sur fond blanc, même en dark mode
-			color: #000000; // Idem pour le texte
+			background: #ffffff;
+			color: #000000;
 			font-size: 14px;
 			line-height: 1.6;
 			box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
 
-			// Empty state
 			.tm-empty-state {
 				height: 100%;
 				display: flex;
@@ -355,9 +229,147 @@ $tm-card-shadow: var(--shadow-base);
 			}
 		}
 	}
+
+	.tm-card {
+		background: var(--card-bg);
+		border: 1px solid $tm-border-color;
+		border-radius: var(--border-radius-lg);
+		cursor: pointer;
+		transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s;
+		display: flex;
+		flex-direction: column;
+		height: 220px;
+		position: relative;
+		overflow: hidden;
+
+		&:hover {
+			transform: translateY(-2px);
+			box-shadow: var(--shadow-md);
+			border-color: var(--gray-400);
+
+			.tm-card-title {
+				color: var(--primary);
+			}
+
+			.tm-heart-icon,
+			.tm-edit-icon {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		&.selected {
+			border: 1.5px solid var(--primary);
+			box-shadow: 0 0 0 3px var(--primary-accent);
+		}
+
+		.tm-card-body {
+			flex: 1;
+			background: var(--bg-color);
+			overflow: hidden;
+			padding: var(--padding-md);
+			position: relative;
+
+			.tm-card-mini-preview {
+				font-family: var(--font-stack);
+				font-size: 8px;
+				color: var(--gray-500);
+				line-height: 1.5;
+				user-select: none;
+				opacity: 0.8;
+			}
+
+			.tm-card-overlay {
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				right: 0;
+				height: 60px;
+				background: linear-gradient(to bottom, rgba(0, 0, 0, 0), var(--card-bg));
+			}
+		}
+
+		.tm-card-footer {
+			height: 44px;
+			border-top: 1px solid $tm-border-color;
+			display: flex;
+			align-items: center;
+			padding: 0 var(--padding-md);
+			background-color: var(--control-bg);
+
+			.tm-card-title {
+				font-size: var(--text-md);
+				font-weight: 600;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				color: $tm-text-color;
+				width: 100%;
+			}
+		}
+
+		.tm-actions-top {
+			position: absolute;
+			top: 8px;
+			right: 8px;
+			z-index: 5;
+			display: flex;
+			gap: 6px;
+		}
+
+		.tm-heart-icon,
+		.tm-edit-icon {
+			cursor: pointer;
+			width: 28px;
+			height: 28px;
+			border-radius: 50%;
+			background-color: var(--card-bg);
+			box-shadow: var(--shadow-sm);
+			border: 1px solid var(--border-color);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+
+			opacity: 0;
+			transform: translateY(-5px);
+			transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+
+			svg {
+				width: 14px;
+				height: 14px;
+				stroke: var(--text-muted);
+				fill: none;
+				stroke-width: 2;
+				transition: stroke 0.2s;
+			}
+
+			&:hover {
+				transform: scale(1.1);
+				box-shadow: var(--shadow-md);
+				background-color: var(--control-bg);
+
+				svg {
+					stroke: var(--text-color);
+				}
+			}
+		}
+
+		.tm-heart-icon {
+			&.liked {
+				opacity: 1;
+				transform: translateY(0);
+				border-color: var(--red-100);
+				background-color: var(--red-50);
+
+				svg {
+					stroke: var(--red-500);
+					fill: var(--red-500);
+				}
+			}
+		}
+	}
 }
 
-// --- Responsive Mobile ---
 @media (max-width: 991px) {
 	.template-manager-body {
 		flex-direction: column;
@@ -375,16 +387,38 @@ $tm-card-shadow: var(--shadow-base);
 
 			.tm-category-item {
 				white-space: nowrap;
-				background-color: var(--control-bg); // Boutons style "pills" en mobile
+				background-color: var(--control-bg);
 			}
 		}
 
 		.tm-main {
-			padding: var(--padding-md);
+			padding: 0;
+
+			.tm-toolbar {
+				padding: 0 10px;
+			}
 		}
 
 		.tm-preview-pane {
-			display: none; // Masquer l'aperçu sur mobile pour simplifier
+			display: flex;
+			width: 100%;
+			height: auto;
+			padding: var(--padding-md);
+			border-left: none;
+			border-top: 1px solid $tm-border-color;
+			background-color: var(--card-bg);
+
+			.tm-preview-header,
+			.tm-preview-frame {
+				display: none;
+			}
+
+			> div:last-child {
+				margin-top: 0 !important;
+				padding-top: 0 !important;
+				border-top: none !important;
+				width: 100%;
+			}
 		}
 	}
 }

@@ -254,10 +254,10 @@ frappe.views.CommunicationComposer = class {
 		$wrapper.html(`
 			<div class="flex" style="gap: 8px; margin-bottom: 10px;">
 				<button class="btn btn-default btn-sm action-btn-template" title="${__("Email Templates")}">
-					${frappe.utils.icon("pen", "sm")}
+					${frappe.utils.icon("pen", "sm")} ${__("Email Templates")}
 				</button>
 				<button class="btn btn-default btn-sm action-btn-signature" title="${__("Add Signature")}">
-					${frappe.utils.icon("edit", "sm")}
+					${frappe.utils.icon("edit", "sm")} ${__("Add Signature")}
 				</button>
 			</div>
 		`);
@@ -995,12 +995,12 @@ frappe.views.CommunicationComposer = class {
 	}
 
 	open_template_manager() {
-		new frappe.views.EmailTemplateSelector((selected_template) => {
-			this.apply_template(selected_template);
-		});
+		new frappe.views.EmailTemplateSelector((selected_template, options) => {
+			this.apply_template(selected_template, options);
+		}, this);
 	}
 
-	apply_template(template) {
+	apply_template(template, options = {}) {
 		if (!template) return;
 
 		const set_values = () => {
@@ -1010,12 +1010,21 @@ frappe.views.CommunicationComposer = class {
 			this.dialog.set_value("content", template.response);
 		};
 
-		if (this.dialog.get_value("content")) {
-			frappe.confirm(__("Cela remplacera le contenu actuel du message. Continuer ?"), () => {
-				set_values();
-			});
-		} else {
+		if (options.action === "clear_insert") {
 			set_values();
+			return;
+		}
+
+		if (options.action === "insert") {
+			let current_content = this.dialog.get_value("content") || "";
+			this.dialog.set_value(
+				"content",
+				current_content + (current_content ? "<br>" : "") + template.response
+			);
+			if (!this.dialog.get_value("subject") && template.subject) {
+				this.dialog.set_value("subject", template.subject);
+			}
+			return;
 		}
 	}
 };

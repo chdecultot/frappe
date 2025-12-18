@@ -55,3 +55,15 @@ def get_email_template(template_name, doc):
 
 	email_template = frappe.get_doc("Email Template", template_name)
 	return email_template.get_formatted_email(doc)
+
+
+@frappe.whitelist()
+def create_update_email_template(doc):
+	template_values = frappe.parse_json(doc)
+	if template_values.get("name"):
+		doc = frappe.get_doc("Email Template", template_values.get("name"))
+	else:
+		doc = frappe.new_doc("Email Template")
+
+	doc.update(template_values)
+	return doc.save()
