@@ -117,6 +117,12 @@ companion off the apps screen; declaring your own rail costs nothing.
    after migrate and app installs. Example: `flow_agents = ["myapp.ai.agents"]`.
 1. `flow_tools` - list of `@tool` functions. Flow saves each as a locked Flow Tool that any agent can use.
    Example: `flow_tools = ["myapp.ai.get_open_todos"]`.
+1. `before_flow_tool_call` - list of methods called as `method(tool_name, args, ctx)` before a Flow tool
+   runs, for sub-agents and triggered runs too. `ctx` is the call's `frappe.flow.ToolContext`. The method
+   refuses the call by raising: the model gets the error message.
+1. `after_flow_tool_call` - list of methods called as `method(tool_name, args, ctx, result)` after a Flow
+   tool runs. The method may return a replacement result, for example a redacted one. It refuses the result
+   by raising, which also rolls back the call's writes.
 
 #### Notifications
 

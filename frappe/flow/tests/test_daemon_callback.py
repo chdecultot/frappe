@@ -61,6 +61,33 @@ def later(*, ctx: ToolContext) -> Pending:
 
 
 @tool
+def write_todo(*, ctx: ToolContext) -> str:
+	"""Inserts a ToDo and returns its name."""
+	return frappe.get_doc({"doctype": "ToDo", "description": "callback-guarded"}).insert().name
+
+
+def refuse_whoami(name: str, args: dict, ctx: ToolContext) -> None:
+	"""A before guard the tests hook in."""
+	frappe.flags.guarded_calls.append((name, args, ctx.agent, ctx.user, frappe.session.user))
+	if name == "whoami":
+		raise frappe.PermissionError("whoami is refused")
+
+
+def redact_owner(name: str, args: dict, ctx: ToolContext, result):
+	"""An after guard the tests hook in."""
+	if name == "write_todo":
+		raise frappe.ValidationError("the result is refused")
+	if isinstance(result, str):
+		return result.replace(OWNER, "[redacted]")
+
+
+GUARDS = {
+	"before_flow_tool_call": [f"{MODULE}.refuse_whoami"],
+	"after_flow_tool_call": [f"{MODULE}.redact_owner"],
+}
+
+
+@tool
 def callback_context(*, ctx: ToolContext) -> dict:
 	"""Return the trusted identity Flow supplied for this callback."""
 	return {"session": ctx.session_id, "agent": ctx.agent, "user": ctx.user}
@@ -79,7 +106,7 @@ class TestToolCallback(IntegrationTestCase):
 			frappe.get_doc(
 				{"doctype": "User", "email": OWNER, "first_name": "Callback", "send_welcome_email": 0}
 			).insert(ignore_permissions=True)
-		for slug in ("whoami", "maybe_later", "write_then_fail", "callback_context", "later"):
+		for slug in ("whoami", "maybe_later", "write_then_fail", "write_todo", "callback_context", "later"):
 			self.flow_tool(slug, type="Imported", import_path=f"{MODULE}.{slug}")
 		self.flow_tool("boom", type="Script", code=BOOM)
 		self.flow_tool("whoami_later", type="Script", code=WHOAMI, background=1)
@@ -105,6 +132,7 @@ class TestToolCallback(IntegrationTestCase):
 			"whoami_later",
 			"maybe_later",
 			"write_then_fail",
+			"write_todo",
 			"callback_context",
 			"later",
 			"boom",
@@ -306,6 +334,47 @@ class TestToolCallback(IntegrationTestCase):
 				if disable:
 					frappe.db.set_value(*disable, "enabled", 0)
 				self.assertEqual(self.call(name, **target), {"content": error, "is_error": True})
+
+	def guarded(self) -> list:
+		frappe.flags.guarded_calls = []
+		self.addCleanup(frappe.flags.pop, "guarded_calls", None)
+		self.enterContext(self.patch_hooks(GUARDS))
+		return frappe.flags.guarded_calls
+
+	def test_a_guard_sees_each_call_as_the_owner_and_may_redact_its_result(self):
+		calls = self.guarded()
+		redacted = self.call("maybe_later", {"slow": False})
+		self.assertEqual(redacted, {"content": "[redacted]", "is_error": False})
+		self.assertEqual(calls, [("maybe_later", {"slow": False}, self.agent.name, OWNER, OWNER)])
+
+	def test_a_guard_refuses_a_sub_agents_call_before_it_runs(self):
+		child = self.flow_agent("Guarded Child", tools=[{"tool": "whoami"}])
+		self.agent.append("sub_agents", {"agent": child})
+		self.agent.save()
+		calls = self.guarded()
+		# last: a refusal rolls the whole transaction back
+		self.assertEqual(self.call("whoami", agent=child), {"content": "whoami is refused", "is_error": True})
+		self.assertEqual(calls, [("whoami", {}, child, OWNER, OWNER)])
+
+	def test_a_refused_result_rolls_back_the_calls_writes(self):
+		self.guarded()
+		self.assertEqual(self.call("write_todo"), {"content": "the result is refused", "is_error": True})
+		self.assertFalse(frappe.db.exists("ToDo", {"description": "callback-guarded"}))
+
+	def test_guards_skip_the_confirmation_card_and_wait_for_the_background_job(self):
+		calls = self.guarded()
+		self.assertNotIn("content", self.call("whoami", mode="confirm"))
+		with patch("frappe.enqueue") as enqueue:
+			self.assertTrue(self.call("maybe_later", {"slow": True}, result_token="t1")["pending"])
+		self.assertEqual(calls, [])
+		job = {
+			key: value for key, value in enqueue.call_args.kwargs.items() if key not in ("queue", "timeout")
+		}
+		daemon = FakeDaemon()
+		with patch.object(DaemonClient, "for_site", return_value=daemon), patch("frappe.db.commit"):
+			run_background_tool(**job)
+		self.assertEqual(calls, [("maybe_later", {"slow": True}, self.agent.name, OWNER, OWNER)])
+		self.assertEqual(daemon.calls[-1][-1], {"content": "[redacted]", "is_error": False})
 
 	def flow_agent(self, title: str, **fields) -> str:
 		doc = {

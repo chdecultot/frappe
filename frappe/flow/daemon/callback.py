@@ -125,10 +125,28 @@ def _dispatch(
 	if result_token and (tool.background(args) if callable(tool.background) else tool.background):
 		return _enqueue(session_id, agent, name, args, result_token)
 	ctx = ToolContext(session_id=session_id, agent=agent, user=frappe.session.user, result_token=result_token)
+	_check_call(name, args, ctx)
 	result = tool(**args, ctx=ctx)
 	if isinstance(result, Pending):
 		return {"pending": True, "timeout": result.timeout}
+	result = _check_result(name, args, ctx, result)
 	return {"content": _text(result), "is_error": False}
+
+
+def _check_call(name: str, args: dict, ctx: ToolContext) -> None:
+	"""Apps check a call before it runs. A guard refuses by raising: the model gets the error."""
+	for path in frappe.get_hooks("before_flow_tool_call"):
+		frappe.get_attr(path)(name, args, ctx)
+
+
+def _check_result(name: str, args: dict, ctx: ToolContext, result: Any) -> Any:
+	"""Apps check a result before the model sees it. A guard refuses by raising, which also rolls
+	back the call's writes, or returns a replacement, such as a redacted result."""
+	for path in frappe.get_hooks("after_flow_tool_call"):
+		checked = frappe.get_attr(path)(name, args, ctx, result)
+		if checked is not None:
+			result = checked
+	return result
 
 
 def _enqueue(session_id: str, agent: str, tool: str, args: dict, result_token: str) -> dict:
