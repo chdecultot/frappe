@@ -24,7 +24,7 @@ class AutomationRunStep(Document):
 		parent: DF.Data
 		parentfield: DF.Data
 		parenttype: DF.Data
-		status: DF.Literal["Success", "Failed", "Skipped", "Waiting"]
+		status: DF.Literal["Success", "Failed", "Skipped", "Waiting", "Rejected"]
 		step_idx: DF.Int
 		step_key: DF.Data | None
 		traceback: DF.Code | None

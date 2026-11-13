@@ -69,6 +69,7 @@ def get_wait_outcome(row) -> dict | None:
 	return {
 		"outcome": subscription.status,
 		"event_name": subscription.event_name,
+		"step_key": subscription.step_key,
 		"payload": frappe.parse_json(subscription.event_payload) if subscription.event_payload else {},
 	}
 

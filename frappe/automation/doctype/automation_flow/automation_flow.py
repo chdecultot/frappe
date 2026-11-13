@@ -6,8 +6,8 @@ from frappe import _
 from frappe.automation_engine.registry import DOC_TRIGGER_TYPES, clear_automation_cache
 from frappe.model.document import Document
 
-STEP_TYPES = ("Action", "Wait", "WaitForEvent", "If")
-WAIT_STEP_TYPES = ("Wait", "WaitForEvent")
+STEP_TYPES = ("Action", "Wait", "WaitForEvent", "WaitForApproval", "If")
+WAIT_STEP_TYPES = ("Wait", "WaitForEvent", "WaitForApproval")
 WAIT_UNITS = ("Seconds", "Minutes", "Hours", "Days")
 
 
@@ -167,6 +167,8 @@ class AutomationFlow(Document):
 			self.validate_wait(row)
 		if row.step_type == "WaitForEvent":
 			self.validate_event_wait(row)
+		if row.step_type == "WaitForApproval":
+			self.validate_approval(row)
 
 	def validate_wait(self, row):
 		params = frappe.parse_json(row.params) if row.params else {}
@@ -179,6 +181,11 @@ class AutomationFlow(Document):
 		from frappe.automation_engine.events import validate_wait_params
 
 		validate_wait_params(frappe.parse_json(row.params) if row.params else {})
+
+	def validate_approval(self, row):
+		from frappe.automation_engine.approvals import validate_approval_params
+
+		validate_approval_params(frappe.parse_json(row.params) if row.params else {})
 
 	def validate_document_type(self):
 		if self.document_type and frappe.get_meta(self.document_type).istable:

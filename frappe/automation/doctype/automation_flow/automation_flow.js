@@ -185,7 +185,13 @@ Object.assign(frappe.automation_flow, {
 	},
 
 	render_step(step) {
-		const colors = { Success: "green", Skipped: "gray", Failed: "red", Waiting: "blue" };
+		const colors = {
+			Success: "green",
+			Skipped: "gray",
+			Failed: "red",
+			Waiting: "blue",
+			Rejected: "orange",
+		};
 		const lines = [
 			`<b>${frappe.utils.escape_html(step.action_type)}</b>
 			 <span class="indicator-pill ${colors[step.status] || "gray"}">${__(step.status)}</span>`,

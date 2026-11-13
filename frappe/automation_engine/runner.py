@@ -8,6 +8,7 @@ import frappe
 from frappe import _
 from frappe.automation_engine import settings
 from frappe.automation_engine.actions.base import StopAutomation, get_action_registry
+from frappe.automation_engine.approvals import APPROVAL_EVENT, approval_outcome, request_approval
 from frappe.automation_engine.conditions import condition_values, evaluate_related_condition
 from frappe.automation_engine.dispatch import matches_rule
 from frappe.automation_engine.events import get_wait_outcome, schedule_event_wait
@@ -39,6 +40,8 @@ STEP_FIELDS = (
 )
 STEP_JSON_FIELDS = ("condition_values", "output")
 WAIT_UNIT_SECONDS = {"Seconds": 1, "Minutes": 60, "Hours": 3600, "Days": 86400}
+# The arm a rejected approval sits in. No step names it, so the rest of the arm does not run.
+CLOSED_ARM = "Closed"
 
 
 def execute_automation(queue_name: str):
@@ -214,6 +217,8 @@ def _run_plan(steps, rule, doc, context, snapshot, start_idx=0) -> str:
 		_update_context(context, step, entry)
 		if status == "Waiting":
 			return "Waiting"
+		if status == "Rejected" and not _close_arm(step, taken):
+			return overall
 		if status == "Failed":
 			overall = "Partially Failed"
 			if rule.stop_on_error:
@@ -237,12 +242,17 @@ def _step_outcome(registry, step, doc, context, pos, start_idx, taken):
 		return _resolve_if(step, doc, context, pos, start_idx, taken)
 	if pos < start_idx:
 		return None, None, None  # already executed in the leg before the wait
+	if step_type == "WaitForApproval" and _settles_approval(step, context):
+		# Before the step condition: a document changed during the wait must not skip the decision.
+		return _settle_approval(step, context)
 	if not _step_condition_matches(step, doc, context):
 		return "Skipped", _skip_detail(step, doc, context), 0
 	if step_type == "Wait":
 		return _begin_wait(step, context, pos)
 	if step_type == "WaitForEvent":
 		return _begin_event_wait(step, context, pos)
+	if step_type == "WaitForApproval":
+		return _begin_approval(step, context, pos)
 	return _run_one(registry, step, doc, context, pos)
 
 
@@ -322,6 +332,35 @@ def _begin_event_wait(step, context, pos):
 
 def _simulated_event_wait(params) -> str:
 	return _("Waited for {0} (simulated)").format(params.get("event_name") or _("event"))
+
+
+def _begin_approval(step, context, pos):
+	started = time.monotonic()
+	if frappe.flags.get("in_automation_trial"):
+		# Nobody decides a trial, and its later steps may reach outside the database: fail closed.
+		return "Rejected", {"detail": _("Not approved (test run)"), "approved": False}, _ms(started)
+	# The run resumes on this step, which then records the decision.
+	output = request_approval(context, _step_params(step), step["step_key"], pos)
+	return "Waiting", output, _ms(started)
+
+
+def _settles_approval(step, context) -> bool:
+	event = context["event"]
+	return event.get("event_name") == APPROVAL_EVENT and event.get("step_key") == step["step_key"]
+
+
+def _settle_approval(step, context):
+	started = time.monotonic()
+	output = approval_outcome(context["event"], context["steps"].get(step["step_key"]) or {})
+	return ("Success" if output["approved"] else "Rejected"), output, _ms(started)
+
+
+def _close_arm(step, taken) -> bool:
+	"""End the If arm a rejected approval sits in. False at the top level, where the run ends."""
+	parent = cint(step.get("parent_step"))
+	if parent:
+		taken[_branch_key(parent)] = CLOSED_ARM
+	return bool(parent)
 
 
 def _wait_seconds(params) -> int:
