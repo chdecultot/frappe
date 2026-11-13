@@ -4,6 +4,7 @@ frappe.listview_settings["Automation Trigger Queue"] = {
 		var colors = {
 			Pending: "orange",
 			Scheduled: "purple",
+			Queued: "cyan",
 			Running: "blue",
 			Done: "green",
 			Failed: "red",

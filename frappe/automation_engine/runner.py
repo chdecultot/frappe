@@ -9,9 +9,10 @@ from frappe import _
 from frappe.automation_engine import settings
 from frappe.automation_engine.actions.base import StopAutomation, get_action_registry
 from frappe.automation_engine.conditions import condition_values, evaluate_related_condition
-from frappe.automation_engine.dispatch import matches_rule
+from frappe.automation_engine.dispatch import kick_drainer, matches_rule
 from frappe.automation_engine.events import get_wait_outcome, schedule_event_wait
 from frappe.automation_engine.queue import (
+	HANDED_OFF,
 	QUEUE,
 	WAITING_STATES,
 	clear_effects,
@@ -205,11 +206,13 @@ def _run_plan(steps, rule, doc, context, snapshot, start_idx=0) -> str:
 	"""Walk the snapshot once, honouring branch arms and skipping what already ran."""
 	registry = get_action_registry()
 	taken = context["branches"]
-	overall = "Success"
+	overall = _carried_status(steps)
 	for pos, step in enumerate(snapshot):
 		status, detail, duration = _safe_step_outcome(registry, step, doc, context, pos, start_idx, taken)
 		if status is None:
 			continue
+		if status == HANDED_OFF:  # The step job records the step when it runs it
+			return "Waiting"
 		entry = _append_step(steps, step, pos, status, detail, duration)
 		_update_context(context, step, entry)
 		if status == "Waiting":
@@ -218,7 +221,14 @@ def _run_plan(steps, rule, doc, context, snapshot, start_idx=0) -> str:
 			overall = "Partially Failed"
 			if rule.stop_on_error:
 				return "Failed"
+		if _in_step_job(context, pos) and pos < len(snapshot) - 1:
+			return _return_to_drain(context, pos)
 	return overall
+
+
+def _carried_status(steps) -> str:
+	"""A failure recorded by an earlier leg of a resumed run still makes it Partially Failed."""
+	return "Partially Failed" if any(step["status"] == "Failed" for step in steps) else "Success"
 
 
 def _safe_step_outcome(registry, step, doc, context, pos, start_idx, taken):
@@ -243,6 +253,8 @@ def _step_outcome(registry, step, doc, context, pos, start_idx, taken):
 		return _begin_wait(step, context, pos)
 	if step_type == "WaitForEvent":
 		return _begin_event_wait(step, context, pos)
+	if _runs_in_own_job(registry, step, context, pos):
+		return _hand_off(registry, step, context, pos)
 	return _run_one(registry, step, doc, context, pos)
 
 
@@ -356,6 +368,54 @@ def resume_row_values(context, run_after, resume_from_idx) -> dict:
 		"resume_run": context["run"].name,
 		"resume_from_idx": resume_from_idx,
 	}
+
+
+# An action with a job_queue runs in a job of its own, so a slow call does not hold the
+# drain's commit group open. The run parks like a Wait, the job runs the one step, and a resume row
+# hands the rest back to the drain.
+def _runs_in_own_job(registry, step, context, pos) -> bool:
+	handler = registry.get(step.get("action_type"))
+	if not (handler and handler.job_queue):
+		return False
+	# A trial is rolled back when it ends, so no job could pick the step up.
+	if frappe.flags.get("in_automation_trial"):
+		return False
+	return not _in_step_job(context, pos)
+
+
+def _in_step_job(context, pos) -> bool:
+	"""True for the one step a step job was enqueued for."""
+	row = context["queue_row"]
+	return frappe.flags.get("automation_step_job") == row.name and pos == cint(row.resume_from_idx)
+
+
+def _hand_off(registry, step, context, pos):
+	run = context["run"].name
+	values = {**resume_row_values(context, now(), pos), "status": HANDED_OFF}
+	frappe.get_doc(values).insert(ignore_permissions=True)
+	frappe.enqueue(
+		"frappe.automation_engine.drainer.run_step_job",
+		queue=registry[step["action_type"]].job_queue,
+		job_id=step_job_id(run, pos),
+		deduplicate=True,
+		enqueue_after_commit=True,
+		run=run,
+		step_idx=pos,
+	)
+	return HANDED_OFF, None, 0
+
+
+def step_job_id(run: str, step_idx: int) -> str:
+	# One job per run and step: a row released by requeue_stale_running() and handed off again
+	# is claimed by the job still queued for it.
+	return f"automation_step::{frappe.local.site}::{run}::{step_idx}"
+
+
+def _return_to_drain(context, pos) -> str:
+	"""Park the run after the step job's step, so the drain runs the steps after it."""
+	schedule_wait(context, 0, pos + 1)
+	frappe.db.after_commit.add(kick_drainer)
+	return "Waiting"
 
 
 def _run_one(registry, step, doc, context, idx):

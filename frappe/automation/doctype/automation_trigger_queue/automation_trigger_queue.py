@@ -35,7 +35,7 @@ class AutomationTriggerQueue(Document):
 		resume_from_idx: DF.Int
 		resume_run: DF.Data | None
 		run_after: DF.Datetime | None
-		status: DF.Literal["Pending", "Scheduled", "Running", "Done", "Failed", "Skipped"]
+		status: DF.Literal["Pending", "Scheduled", "Queued", "Running", "Done", "Failed", "Skipped"]
 		triggered_at: DF.Datetime | None
 		triggered_by: DF.Link | None
 	# end: auto-generated types

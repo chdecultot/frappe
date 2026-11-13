@@ -71,6 +71,10 @@ class AutomationAction:
 	# False when executing reaches past the database, so a rollback cannot undo what the step did
 	# and the run must never be replayed from the top. See queue.mark_effects_delivered.
 	transactional: bool = True
+	# The RQ queue ("long", "default", "short") of a job this action runs in, apart from the
+	# drain. Set it for a slow action (an LLM call, say): run inline, it holds the drain's commit group
+	# open and delays every other flow's row behind it. None runs the action inline in the drain.
+	job_queue: str | None = None
 	supported_trigger_types: list | None = None
 	params_schema: ClassVar[list] = []
 	output_schema: ClassVar[dict | None] = None

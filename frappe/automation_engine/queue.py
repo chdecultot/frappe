@@ -16,6 +16,11 @@ DRAIN_QUEUE = "default"
 # it comes due. Both are claimable, so the drainer spans the pair.
 WAITING_STATES = ("Pending", "Scheduled")
 
+# A resume row whose next step was handed to a job of its own (AutomationAction.job_queue).
+# Not a waiting state, so the drainer leaves it to that job; requeue_stale_running() gives it back
+# to the drainer if the job never claims it.
+HANDED_OFF = "Queued"
+
 # How long the "this row already reached the outside world" mark outlives the run that set it.
 # Long enough to cover a stalled drain, short enough that the key is not kept forever.
 EFFECTS_TTL = 24 * 3600

@@ -10,6 +10,7 @@ from frappe.automation_engine import runner, settings
 from frappe.automation_engine.dispatch import kick_drainer
 from frappe.automation_engine.queue import (
 	DRAIN_QUEUE,
+	HANDED_OFF,
 	QUEUE,
 	WAITING_STATES,
 	clear_effects,
@@ -224,6 +225,40 @@ def execute_claimed(executor, name):
 		clear_effects(name)
 
 
+def run_step_job(run: str, step_idx: int):
+	"""Run one handed-off step of `run` in this job, apart from the drain.
+
+	The row is claimed here, not when the job is enqueued: a job that finds nothing Queued for
+	its step lost the row to requeue_stale_running(), and the drain runs it instead.
+	"""
+	if not settings.is_enabled():
+		return
+	with read_committed():
+		name = _claim_step_row(run, step_idx)
+		if not name:
+			return
+		frappe.flags.automation_step_job = name
+		try:
+			execute_claimed(runner.execute_automation, name)
+		finally:
+			frappe.flags.automation_step_job = None
+
+
+def _claim_step_row(run, step_idx) -> str | None:
+	name = frappe.db.get_value(
+		QUEUE,
+		{"resume_run": run, "resume_from_idx": step_idx, "status": HANDED_OFF},
+		"name",
+		for_update=True,
+	)
+	if name:
+		# Stamps modified, so a job killed mid-step is released by requeue_stale_running().
+		frappe.db.set_value(QUEUE, name, "status", "Running")
+	# The claim has to be visible before the (slow) step starts.
+	frappe.db.commit()  # nosemgrep
+	return name
+
+
 def promote_due_scheduled():
 	"""Move rows whose run_after has arrived from Scheduled to Pending.
 
@@ -316,13 +351,17 @@ def drain_due():
 
 
 def requeue_stale_running():
-	"""Flip Running rows stuck past the claim timeout back to Pending"""
+	"""Flip Running rows stuck past the claim timeout back to Pending.
+
+	Queued rows too, whose step job was lost before it claimed them. The drain hands the
+	step off again.
+	"""
 	cutoff = add_to_date(now(), minutes=-cint(settings.get("stale_running_minutes")))
 	queue = frappe.qb.DocType(QUEUE)
 	(
 		frappe.qb.update(queue)
 		.set(queue.status, "Pending")
-		.where(queue.status == "Running")
+		.where(queue.status.isin(("Running", HANDED_OFF)))
 		.where(queue.modified < cutoff)
 	).run()
 
