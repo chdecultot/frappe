@@ -16,7 +16,7 @@ def dispatch(method: str, params: dict[str, Any], version: str) -> dict:
 	if method == "server/discover" and version == protocol.LATEST_VERSION:
 		return {
 			"supportedVersions": list(protocol.SUPPORTED_VERSIONS),
-			"capabilities": {"tools": {}},
+			"capabilities": capabilities({}),
 			**server_configuration(),
 			"ttlMs": 3600000,
 			"cacheScope": "private",
@@ -27,6 +27,12 @@ def dispatch(method: str, params: dict[str, Any], version: str) -> dict:
 		if method == "tools/list":
 			return {"tools": tools.definitions(), "ttlMs": 3600000, "cacheScope": "private"}
 		return tools.call(params)
+	if method in ("prompts/list", "prompts/get"):
+		from frappe.mcp import prompts
+
+		if method == "prompts/list":
+			return {"prompts": prompts.definitions(), "ttlMs": 3600000, "cacheScope": "private"}
+		return prompts.get(params)
 
 	raise McpError(METHOD_NOT_FOUND, "Unknown MCP method: {0}".format(method), status=404)
 
@@ -42,9 +48,19 @@ def initialize(params: dict[str, Any]) -> dict:
 	# Modern revisions cannot be negotiated through the legacy handshake.
 	return {
 		"protocolVersion": protocol.LEGACY_VERSION,
-		"capabilities": {"tools": {"listChanged": False}},
+		"capabilities": capabilities({"listChanged": False}),
 		**server_configuration(),
 	}
+
+
+def capabilities(options: dict) -> dict:
+	"""Prompts are advertised only when an app provides some."""
+	from frappe.mcp import prompts
+
+	result = {"tools": dict(options)}
+	if prompts.registry():
+		result["prompts"] = dict(options)
+	return result
 
 
 def server_configuration() -> dict:

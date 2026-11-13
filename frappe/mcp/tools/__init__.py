@@ -82,6 +82,30 @@ class Tool:
 
 
 def registry() -> tuple[Tool, ...]:
+	"""The built-in tools, then the tools that apps list under the `mcp_tools` hook."""
+	if (tools := getattr(frappe.local, "mcp_tools", None)) is not None:
+		return tools
+
+	tools = (*builtin_tools(), *hook_tools())
+	names = set()
+	for tool in tools:
+		if tool.name in names:
+			frappe.throw("Duplicate MCP tool name: {0}".format(tool.name))
+		names.add(tool.name)
+
+	frappe.local.mcp_tools = tools
+	return tools
+
+
+def hook_tools() -> Iterator[Tool]:
+	for path in frappe.get_hooks("mcp_tools"):
+		tool = frappe.get_attr(path)
+		if not isinstance(tool, Tool):
+			frappe.throw("MCP tool {0} must be a frappe.mcp.tools.Tool".format(path))
+		yield tool
+
+
+def builtin_tools() -> tuple[Tool, ...]:
 	from frappe.mcp.tools.discover import (
 		GET_DOCTYPE_SCHEMA,
 		GET_METHOD_SCHEMA,

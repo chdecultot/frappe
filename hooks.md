@@ -118,6 +118,14 @@ companion off the apps screen; declaring your own rail costs nothing.
 1. `flow_tools` - list of `@tool` functions. Flow saves each as a locked Flow Tool that any agent can use.
    Example: `flow_tools = ["myapp.ai.get_open_todos"]`.
 
+#### MCP
+
+1. `mcp_tools` - list of `frappe.mcp.tools.Tool` objects. The MCP server lists them after its own tools
+   and runs them as the request user. A tool name used twice is an error.
+   Example: `mcp_tools = ["myapp.mcp.GET_OPEN_TODOS"]`.
+1. `mcp_prompts` - list of `frappe.mcp.prompts.Prompt` objects, served through `prompts/list` and
+   `prompts/get`. Example: `mcp_prompts = ["myapp.mcp.WEEKLY_REPORT"]`.
+
 #### Notifications
 
 1. `notification_config` - method to get notification configuration
